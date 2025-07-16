@@ -36,30 +36,30 @@ jobs:
       run: |
         echo "🚀 Building theme package..."
         
-        # 创建临时目录
-        mkdir -p dist
+        # 创建构建目录
+        mkdir -p /tmp/zeroy-build
         
-        # 复制主题文件到临时目录
-        cp -r . dist/zeroy
-        
-        # 移除不需要的文件
-        cd dist/zeroy
-        rm -rf .git
-        rm -rf .github
-        rm -rf node_modules
-        rm -rf dist
-        rm -f .gitignore
-        rm -f .gitattributes
-        rm -f package.json
-        rm -f package-lock.json
-        rm -f README.md
-        rm -f build-and-upload.sh
-        cd ../..
+        # 复制主题文件，排除不需要的文件
+        rsync -av --exclude='.git' \
+                  --exclude='.github' \
+                  --exclude='node_modules' \
+                  --exclude='dist' \
+                  --exclude='.gitignore' \
+                  --exclude='.gitattributes' \
+                  --exclude='package.json' \
+                  --exclude='package-lock.json' \
+                  --exclude='README.md' \
+                  --exclude='build-and-upload.sh' \
+                  --exclude='.env' \
+                  --exclude='.claude' \
+                  --exclude='.wrangler' \
+                  --exclude='*.zip' \
+                  . /tmp/zeroy-build/zeroy/
         
         # 创建 ZIP 文件
-        cd dist
-        zip -r "../zeroy-${{ steps.theme_version.outputs.version }}.zip" zeroy/
-        cd ..
+        cd /tmp/zeroy-build
+        zip -r "$GITHUB_WORKSPACE/zeroy-${{ steps.theme_version.outputs.version }}.zip" zeroy/
+        cd $GITHUB_WORKSPACE
         
         # 验证 ZIP 文件
         echo "📦 Created package:"
