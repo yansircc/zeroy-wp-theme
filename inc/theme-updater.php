@@ -23,7 +23,7 @@ class Zeroy_Theme_Updater {
         $this->theme_slug = get_template();
         $this->version = wp_get_theme()->get('Version');
         $this->author = wp_get_theme()->get('Author');
-        $this->update_path = 'https://zeroy.yansir.workers.dev/api/theme-updates/check';
+        $this->update_path = 'https://zeroy.yansir.workers.dev/api/wp-updates/themes/check';
         $this->theme_name = wp_get_theme()->get('Name');
         $this->theme_file = $this->theme_slug . '/style.css';
         
@@ -134,7 +134,7 @@ class Zeroy_Theme_Updater {
      * 获取远程主题信息
      */
     private function get_remote_info() {
-        $request = wp_remote_get('https://zeroy.yansir.workers.dev/api/theme-updates/info/' . $this->theme_slug);
+        $request = wp_remote_get('https://zeroy.yansir.workers.dev/api/wp-updates/themes/info/' . $this->theme_slug);
         
         if (!is_wp_error($request) && wp_remote_retrieve_response_code($request) === 200) {
             $body = wp_remote_retrieve_body($request);
@@ -148,7 +148,7 @@ class Zeroy_Theme_Updater {
      * 获取更新日志
      */
     private function get_changelog() {
-        $request = wp_remote_get('https://zeroy.yansir.workers.dev/api/theme-updates/changelog/' . $this->theme_slug);
+        $request = wp_remote_get('https://zeroy.yansir.workers.dev/api/wp-updates/themes/changelog/' . $this->theme_slug);
         
         if (!is_wp_error($request) && wp_remote_retrieve_response_code($request) === 200) {
             $body = wp_remote_retrieve_body($request);

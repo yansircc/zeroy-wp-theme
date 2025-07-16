@@ -68,7 +68,7 @@ HTTP_CODE=$(curl -X POST \
   -F "file=@zeroy-$VERSION.zip" \
   -F "theme=zeroy" \
   -F "version=$VERSION" \
-  "$API_URL/api/theme-updates/upload/theme" \
+  "$API_URL/api/wp-updates/themes/upload" \
   -s -w "%{http_code}" \
   -o "$TEMP_RESPONSE")
 
