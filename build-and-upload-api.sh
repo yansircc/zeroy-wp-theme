@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Zeroy Theme 构建和上传脚本
+# Zeroy Theme 构建和通过 API 上传脚本
 
 set -e
 
@@ -40,6 +40,7 @@ rsync -av --exclude='.git' \
           --exclude='package-lock.json' \
           --exclude='README.md' \
           --exclude='build-and-upload.sh' \
+          --exclude='build-and-upload-api.sh' \
           --exclude='.env' \
           --exclude='.claude' \
           --exclude='.wrangler' \
@@ -56,28 +57,34 @@ cd "$OLDPWD"
 echo -e "${GREEN}✅ ZIP 文件创建成功:${NC}"
 ls -la "zeroy-$VERSION.zip"
 
-# 上传到 R2 (如果配置了环境变量)
-if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
-    echo -e "${YELLOW}☁️  上传到 Cloudflare R2...${NC}"
-    
-    # 检查是否安装了 wrangler
-    if ! command -v wrangler &> /dev/null; then
-        echo -e "${YELLOW}📥 安装 wrangler...${NC}"
-        npm install -g wrangler
-    fi
-    
-    # 上传到 R2
-    wrangler r2 object put "zeroy" "zeroy-$VERSION.zip" \
-        --file "zeroy-$VERSION.zip" \
-        --content-type "application/zip"
-    
-    echo -e "${GREEN}✅ 上传到 R2 成功!${NC}"
+# 通过 API 上传
+API_URL="${API_URL:-https://zeroy.yansir.workers.dev}"
+echo -e "${YELLOW}☁️  上传到 API: $API_URL${NC}"
+
+# 使用 curl 上传文件
+# 保存响应到临时文件
+TEMP_RESPONSE="/tmp/upload-response-$$"
+HTTP_CODE=$(curl -X POST \
+  -F "file=@zeroy-$VERSION.zip" \
+  -F "theme=zeroy" \
+  -F "version=$VERSION" \
+  "$API_URL/api/theme-updates/upload/theme" \
+  -s -w "%{http_code}" \
+  -o "$TEMP_RESPONSE")
+
+BODY=$(cat "$TEMP_RESPONSE")
+rm -f "$TEMP_RESPONSE"
+
+if [ "$HTTP_CODE" = "200" ]; then
+    echo -e "${GREEN}✅ 上传成功!${NC}"
+    echo "$BODY" | jq '.' 2>/dev/null || echo "$BODY"
 else
-    echo -e "${YELLOW}⚠️  未配置 Cloudflare 环境变量，跳过上传到 R2${NC}"
-    echo -e "${YELLOW}   请设置 CLOUDFLARE_API_TOKEN 和 CLOUDFLARE_ACCOUNT_ID${NC}"
+    echo -e "${RED}❌ 上传失败 (HTTP $HTTP_CODE)${NC}"
+    echo "$BODY" | jq '.' 2>/dev/null || echo "$BODY"
+    exit 1
 fi
 
-echo -e "${GREEN}🎉 构建完成!${NC}"
+echo -e "${GREEN}🎉 构建和上传完成!${NC}"
 echo -e "${GREEN}   ZIP 文件: zeroy-$VERSION.zip${NC}"
 
 # 清理临时目录
