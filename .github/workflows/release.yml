@@ -25,6 +25,16 @@ jobs:
       with:
         node-version: '20'
         
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y rsync zip
+        
     - name: Get theme version
       id: theme_version
       run: |
@@ -78,7 +88,7 @@ jobs:
         echo "☁️ Uploading to Cloudflare R2..."
         
         # 安装 wrangler
-        npm install -g wrangler
+        bun install -g wrangler
         
         # 验证 wrangler 配置
         wrangler whoami
