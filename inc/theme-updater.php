@@ -68,6 +68,12 @@ class Zeroy_Theme_Updater {
      */
     private function get_remote_version() {
         $url = $this->update_path . '?theme=' . $this->theme_slug . '&version=' . $this->version;
+        
+        // 在开发环境下添加 dev 参数
+        if (defined('WP_DEBUG') && WP_DEBUG && defined('ZEROY_DEV_MODE') && ZEROY_DEV_MODE) {
+            $url .= '&dev=1';
+        }
+        
         $request = wp_remote_get($url);
         
         if (is_wp_error($request)) {
