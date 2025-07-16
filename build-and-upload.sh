@@ -66,10 +66,11 @@ if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
         npm install -g wrangler
     fi
     
-    # 上传到 R2
+    # 上传到 R2 (使用 --remote 参数确保上传到远程 R2)
     wrangler r2 object put "zeroy" "zeroy-$VERSION.zip" \
         --file "zeroy-$VERSION.zip" \
-        --content-type "application/zip"
+        --content-type "application/zip" \
+        --remote
     
     echo -e "${GREEN}✅ 上传到 R2 成功!${NC}"
 else
