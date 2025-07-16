@@ -1,0 +1,142 @@
+name: Build and Release Theme
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      force_release:
+        description: 'Force release even without tag'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Get theme version
+      id: theme_version
+      run: |
+        VERSION=$(grep "Version:" style.css | head -1 | sed 's/.*Version: *//' | tr -d ' ')
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Theme version: $VERSION"
+        
+    - name: Create theme package
+      run: |
+        echo "🚀 Building theme package..."
+        
+        # 创建临时目录
+        mkdir -p dist
+        
+        # 复制主题文件到临时目录
+        cp -r . dist/zeroy
+        
+        # 移除不需要的文件
+        cd dist/zeroy
+        rm -rf .git
+        rm -rf .github
+        rm -rf node_modules
+        rm -rf dist
+        rm -f .gitignore
+        rm -f .gitattributes
+        rm -f package.json
+        rm -f package-lock.json
+        rm -f README.md
+        rm -f build-and-upload.sh
+        cd ../..
+        
+        # 创建 ZIP 文件
+        cd dist
+        zip -r "../zeroy-${{ steps.theme_version.outputs.version }}.zip" zeroy/
+        cd ..
+        
+        # 验证 ZIP 文件
+        echo "📦 Created package:"
+        ls -la "zeroy-${{ steps.theme_version.outputs.version }}.zip"
+        
+        # 测试 ZIP 文件内容
+        echo "📋 Package contents:"
+        unzip -l "zeroy-${{ steps.theme_version.outputs.version }}.zip" | head -20
+        
+    - name: Upload to R2
+      if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event.inputs.force_release == 'true'
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      run: |
+        echo "☁️ Uploading to Cloudflare R2..."
+        
+        # 安装 wrangler
+        npm install -g wrangler
+        
+        # 验证 wrangler 配置
+        wrangler whoami
+        
+        # 上传到 R2
+        echo "📤 Uploading versioned file..."
+        wrangler r2 object put "zeroy/zeroy-${{ steps.theme_version.outputs.version }}.zip" \
+          --file "zeroy-${{ steps.theme_version.outputs.version }}.zip" \
+          --content-type "application/zip"
+        
+        # 上传 latest 版本
+        echo "📤 Uploading latest version..."
+        wrangler r2 object put "zeroy/zeroy-latest.zip" \
+          --file "zeroy-${{ steps.theme_version.outputs.version }}.zip" \
+          --content-type "application/zip"
+        
+        echo "✅ Upload to R2 completed successfully!"
+        
+    - name: Create GitHub Release
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v1
+      with:
+        name: Zeroy Theme v${{ steps.theme_version.outputs.version }}
+        body: |
+          ## Zeroy Theme v${{ steps.theme_version.outputs.version }}
+          
+          ### 📥 下载
+          - [zeroy-${{ steps.theme_version.outputs.version }}.zip](https://zeroy.yansir.workers.dev/api/theme-updates/download/zeroy)
+          
+          ### 🔄 自动更新
+          如果您的主题已安装自动更新功能，WordPress 后台会自动提示更新。
+          
+          ### 📦 手动安装
+          1. 下载 ZIP 文件
+          2. 在 WordPress 后台上传主题
+          3. 激活主题
+          
+          ### 🔧 技术信息
+          - 版本: ${{ steps.theme_version.outputs.version }}
+          - 构建时间: ${{ github.run_number }}
+          - 提交: ${{ github.sha }}
+          
+          ---
+          🚀 自动构建和发布于 ${{ github.run_started_at }}
+        files: |
+          zeroy-${{ steps.theme_version.outputs.version }}.zip
+        draft: false
+        prerelease: false
+        
+    - name: Notify API server
+      if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+      run: |
+        echo "🔔 Notifying API server..."
+        
+        # 发送通知到 API 服务器 (可选)
+        curl -X POST "https://zeroy.yansir.workers.dev/api/theme-updates/cache/clear" \
+          -H "Content-Type: application/json" \
+          -d '{"theme": "zeroy", "version": "${{ steps.theme_version.outputs.version }}"}' \
+          || echo "⚠️ API notification failed or not configured"
+        
+        echo "✅ Build and release process completed!"
