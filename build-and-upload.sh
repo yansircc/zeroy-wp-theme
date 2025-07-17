@@ -57,7 +57,7 @@ echo -e "${GREEN}✅ ZIP 文件创建成功:${NC}"
 ls -la "zeroy-$VERSION.zip"
 
 # 通过 API 上传
-API_URL="${API_URL:-https://zeroy.yansir.workers.dev}"
+API_URL="${API_URL:-https://www.zeroy.app}"
 echo -e "${YELLOW}☁️  上传到 API: $API_URL${NC}"
 
 # 使用 curl 上传文件

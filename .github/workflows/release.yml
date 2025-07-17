@@ -89,7 +89,7 @@ jobs:
           -F "file=@zeroy-${{ steps.theme_version.outputs.version }}.zip" \
           -F "theme=zeroy" \
           -F "version=${{ steps.theme_version.outputs.version }}" \
-          "https://zeroy.yansir.workers.dev/api/wp-updates/themes/upload" \
+          "https://www.zeroy.app/api/wp-updates/themes/upload" \
           -w "\n%{http_code}" \
           -s)
         
@@ -114,7 +114,7 @@ jobs:
           ## Zeroy Theme v${{ steps.theme_version.outputs.version }}
           
           ### 📥 下载
-          - [zeroy-${{ steps.theme_version.outputs.version }}.zip](https://zeroy.yansir.workers.dev/api/wp-updates/themes/download/zeroy)
+          - [zeroy-${{ steps.theme_version.outputs.version }}.zip](https://www.zeroy.app/api/wp-updates/themes/download/zeroy)
           
           ### 🔄 自动更新
           如果您的主题已安装自动更新功能，WordPress 后台会自动提示更新。
@@ -142,7 +142,7 @@ jobs:
         echo "🔔 Notifying API server..."
         
         # 发送通知到 API 服务器 (可选)
-        curl -X POST "https://zeroy.yansir.workers.dev/api/wp-updates/cache/clear" \
+        curl -X POST "https://www.zeroy.app/api/wp-updates/cache/clear" \
           -H "Content-Type: application/json" \
           -d '{"theme": "zeroy", "version": "${{ steps.theme_version.outputs.version }}"}' \
           || echo "⚠️ API notification failed or not configured"

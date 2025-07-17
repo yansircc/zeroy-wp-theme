@@ -94,7 +94,7 @@ zeroy/
 
 ## API 端点
 
-主题更新 API 由 `zeroy.yansir.workers.dev` 提供：
+主题更新 API 由 `https://www.zeroy.app` 提供：
 
 - `GET /api/theme-updates/check` - 检查更新
 - `GET /api/theme-updates/info/{theme}` - 获取主题信息
