@@ -35,8 +35,20 @@
         <meta name="description" content="<?php echo esc_attr($description); ?>">
     <?php endif; ?>
 
-    <link rel="canonical"
-        href="<?php echo esc_url(is_singular() ? get_permalink() : (is_home() ? home_url('/') : get_term_link(get_queried_object()))); ?>">
+    <?php
+    // 获取 canonical URL
+    if (is_singular()) {
+        $canonical_url = get_permalink();
+    } elseif (is_home()) {
+        $canonical_url = home_url('/');
+    } elseif (is_404()) {
+        $canonical_url = home_url('/404');
+    } else {
+        $term_link = get_term_link(get_queried_object());
+        $canonical_url = !is_wp_error($term_link) ? $term_link : home_url('/');
+    }
+    ?>
+    <link rel="canonical" href="<?php echo esc_url($canonical_url); ?>">
 
     <?php wp_head(); ?>
 </head>
