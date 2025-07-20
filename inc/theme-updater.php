@@ -25,7 +25,7 @@ class Zeroy_Theme_Updater {
         $this->author = wp_get_theme()->get('Author');
         $this->update_path = 'https://www.zeroy.app/api/wp-updates/themes/check';
         $this->theme_name = wp_get_theme()->get('Name');
-        $this->theme_file = $this->theme_slug . '/style.css';
+        $this->theme_file = $this->theme_slug;
         
         // 添加钩子
         add_filter('site_transient_update_themes', array($this, 'check_for_update'));

@@ -158,3 +158,13 @@ add_filter('language_attributes', 'zeroy_language_attributes');
 
 // 主题自动更新功能
 require_once get_template_directory() . '/inc/theme-updater.php';
+
+// 处理主题更新时的备份权限问题
+add_filter('upgrader_package_options', function($options) {
+    if (isset($options['hook_extra']['theme']) && $options['hook_extra']['theme'] === get_template()) {
+        // 禁用备份功能，避免权限问题
+        $options['clear_destination'] = true;
+        $options['overwrite_package'] = true;
+    }
+    return $options;
+});
