@@ -137,14 +137,14 @@ add_filter('script_loader_src', 'zeroy_remove_query_strings', 15, 1);
 add_filter('style_loader_src', 'zeroy_remove_query_strings', 15, 1);
 
 // 移除 jQuery（如果前台不需要）
-function zeroy_remove_jquery()
-{
-    if (!is_admin()) {
-        wp_deregister_script('jquery');
-        wp_register_script('jquery', false);
-    }
-}
-add_action('init', 'zeroy_remove_jquery');
+// function zeroy_remove_jquery()
+// {
+//     if (!is_admin()) {
+//         wp_deregister_script('jquery');
+//         wp_register_script('jquery', false);
+//     }
+// }
+// add_action('init', 'zeroy_remove_jquery');
 
 // 移除不必要的 meta 标签
 remove_action('wp_head', 'wp_robots', 1);
