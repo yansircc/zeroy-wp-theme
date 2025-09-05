@@ -168,3 +168,23 @@ add_filter('upgrader_package_options', function($options) {
     }
     return $options;
 });
+
+// 前台加载 htmx 脚本
+function zeroy_enqueue_front_assets()
+{
+    if (is_admin()) {
+        return;
+    }
+
+    $script_file = get_template_directory() . '/assets/js/htmx.min.js';
+    $version = file_exists($script_file) ? filemtime($script_file) : null;
+
+    wp_enqueue_script(
+        'zeroy-htmx',
+        get_template_directory_uri() . '/assets/js/htmx.min.js',
+        array(),
+        $version,
+        true
+    );
+}
+add_action('wp_enqueue_scripts', 'zeroy_enqueue_front_assets', 20);

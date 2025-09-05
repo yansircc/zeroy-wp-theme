@@ -71,7 +71,7 @@ git push origin main
 ```css
 /*
 Theme Name: Zeroy
-Version: 1.0.3
+Version: 1.0.4
 */
 ```
 
