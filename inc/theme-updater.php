@@ -27,8 +27,8 @@ class Zeroy_Theme_Updater {
         $this->theme_name = wp_get_theme()->get('Name');
         $this->theme_file = $this->theme_slug;
         
-        // 添加钩子
-        add_filter('site_transient_update_themes', array($this, 'check_for_update'));
+        // 添加钩子：只在 WP 执行检查并写入缓存时触发，避免每个后台页面都请求远程
+        add_filter('pre_set_site_transient_update_themes', array($this, 'check_for_update'));
         add_filter('themes_api', array($this, 'theme_api_call'), 10, 3);
     }
     
@@ -36,10 +36,16 @@ class Zeroy_Theme_Updater {
      * 检查主题更新
      */
     public function check_for_update($transient) {
+        // 允许通过常量禁用远程检查（例如内网或演示环境）
+        if (defined('ZEROY_DISABLE_UPDATE_CHECKS') && ZEROY_DISABLE_UPDATE_CHECKS) {
+            return $transient;
+        }
+
+        // 仅当 WP 正在检查更新时才继续
         if (empty($transient->checked)) {
             return $transient;
         }
-        
+
         // 检查是否有新版本
         $remote_version = $this->get_remote_version();
         
@@ -67,30 +73,55 @@ class Zeroy_Theme_Updater {
      * 获取远程版本信息
      */
     private function get_remote_version() {
+        $cache_key = 'zeroy_theme_update_' . $this->theme_slug;
+        $cached = get_site_transient($cache_key);
+
+        if ($cached && is_array($cached)) {
+            return $cached;
+        }
+
         $url = $this->update_path . '?theme=' . $this->theme_slug . '&version=' . $this->version;
-        
+
         // 在开发环境下添加 dev 参数
         if (defined('WP_DEBUG') && WP_DEBUG && defined('ZEROY_DEV_MODE') && ZEROY_DEV_MODE) {
             $url .= '&dev=1';
         }
-        
-        $request = wp_remote_get($url);
-        
+
+        // 使用较短超时并带 UA，避免后台阻塞
+        $args = array(
+            'timeout' => 3,
+            'redirection' => 2,
+            'sslverify' => true,
+            'headers' => array(
+                'User-Agent' => 'zeroy-theme-updater/' . $this->version . '; ' . get_bloginfo('url'),
+            ),
+        );
+
+        $request = wp_remote_get($url, $args);
+
+        // 失败场景短期缓存空结果，防止频繁重试造成卡顿
+        $failure_ttl = HOUR_IN_SECONDS; // 1 小时退避
+
         if (is_wp_error($request)) {
+            set_site_transient($cache_key, false, $failure_ttl);
             return false;
         }
-        
+
         $response_code = wp_remote_retrieve_response_code($request);
-        
+
         if ($response_code === 200) {
             $body = wp_remote_retrieve_body($request);
             $data = json_decode($body, true);
-            
+
             if (isset($data['update_available'])) {
+                // 成功结果缓存更久；开发模式下缩短
+                $success_ttl = (defined('ZEROY_DEV_MODE') && ZEROY_DEV_MODE) ? 5 * MINUTE_IN_SECONDS : 12 * HOUR_IN_SECONDS;
+                set_site_transient($cache_key, $data, $success_ttl);
                 return $data;
             }
         }
-        
+
+        set_site_transient($cache_key, false, $failure_ttl);
         return false;
     }
     
@@ -140,13 +171,31 @@ class Zeroy_Theme_Updater {
      * 获取远程主题信息
      */
     private function get_remote_info() {
-        $request = wp_remote_get('https://www.zeroy.app/api/wp-updates/themes/info/' . $this->theme_slug);
-        
+        $cache_key = 'zeroy_theme_info_' . $this->theme_slug;
+        $cached = get_site_transient($cache_key);
+        if ($cached) {
+            return $cached;
+        }
+
+        $args = array(
+            'timeout' => 3,
+            'redirection' => 2,
+            'sslverify' => true,
+            'headers' => array(
+                'User-Agent' => 'zeroy-theme-updater/' . $this->version . '; ' . get_bloginfo('url'),
+            ),
+        );
+        $request = wp_remote_get('https://www.zeroy.app/api/wp-updates/themes/info/' . $this->theme_slug, $args);
+
         if (!is_wp_error($request) && wp_remote_retrieve_response_code($request) === 200) {
             $body = wp_remote_retrieve_body($request);
-            return json_decode($body, true);
+            $data = json_decode($body, true);
+            set_site_transient($cache_key, $data, DAY_IN_SECONDS);
+            return $data;
         }
-        
+
+        // 缓存失败状态以避免反复请求
+        set_site_transient($cache_key, false, HOUR_IN_SECONDS);
         return false;
     }
     
@@ -154,12 +203,26 @@ class Zeroy_Theme_Updater {
      * 获取更新日志
      */
     private function get_changelog() {
-        $request = wp_remote_get('https://www.zeroy.app/api/wp-updates/themes/changelog/' . $this->theme_slug);
-        
+        $cache_key = 'zeroy_theme_changelog_' . $this->theme_slug;
+        $cached = get_site_transient($cache_key);
+        if ($cached !== false) {
+            return $cached;
+        }
+
+        $args = array(
+            'timeout' => 3,
+            'redirection' => 2,
+            'sslverify' => true,
+            'headers' => array(
+                'User-Agent' => 'zeroy-theme-updater/' . $this->version . '; ' . get_bloginfo('url'),
+            ),
+        );
+        $request = wp_remote_get('https://www.zeroy.app/api/wp-updates/themes/changelog/' . $this->theme_slug, $args);
+
         if (!is_wp_error($request) && wp_remote_retrieve_response_code($request) === 200) {
             $body = wp_remote_retrieve_body($request);
             $data = json_decode($body, true);
-            
+
             if (isset($data['changelog']) && is_array($data['changelog'])) {
                 $changelog = '';
                 foreach ($data['changelog'] as $entry) {
@@ -170,10 +233,14 @@ class Zeroy_Theme_Updater {
                     }
                     $changelog .= '</ul>';
                 }
+                // changelog 更新频率通常较低，缓存 1 天
+                set_site_transient($cache_key, $changelog, DAY_IN_SECONDS);
                 return $changelog;
             }
         }
-        
+
+        // 失败时短期缓存占位文本，避免反复请求
+        set_site_transient($cache_key, '暂无更新日志', HOUR_IN_SECONDS);
         return '暂无更新日志';
     }
 }

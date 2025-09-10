@@ -157,6 +157,10 @@ function zeroy_language_attributes($output)
 add_filter('language_attributes', 'zeroy_language_attributes');
 
 // 主题自动更新功能
+// 可选：通过设置此常量为 true 来禁用更新检查（用于内网或演示环境）
+if (!defined('ZEROY_DISABLE_UPDATE_CHECKS')) {
+    define('ZEROY_DISABLE_UPDATE_CHECKS', false);
+}
 require_once get_template_directory() . '/inc/theme-updater.php';
 
 // 处理主题更新时的备份权限问题
